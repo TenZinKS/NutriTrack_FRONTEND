@@ -2,6 +2,8 @@ import 'package:get_it/get_it.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:nutri_track/features/auth/domain/repositories/auth_repository.dart';
+import 'package:nutri_track/features/auth/domain/usecases/forgot_password_usecase.dart';
+import 'package:nutri_track/features/auth/domain/usecases/register_usecase.dart';
 
 // Auth feature imports
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
@@ -21,7 +23,10 @@ Future<void> initDependencies() async {
   // Datasource
   // -----------------------------
   sl.registerLazySingleton<AuthRemoteDatasource>(
-    () => AuthRemoteDatasourceImpl(firebaseAuth: sl()),
+    () => AuthRemoteDatasourceImpl(
+      firebaseAuth: sl(),
+      firestore: sl(),
+    ),
   );
 
   // -----------------------------
@@ -35,4 +40,7 @@ Future<void> initDependencies() async {
   // Usecases
   // -----------------------------
   sl.registerLazySingleton(() => LoginUsecase(sl()));
+  sl.registerLazySingleton(() => RegisterUsecase(sl()));
+  sl.registerLazySingleton(() => ForgotPasswordUsecase(sl()));
+
 }
