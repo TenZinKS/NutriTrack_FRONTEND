@@ -6,7 +6,7 @@ class LoginUsecase {
 
   LoginUsecase(this.repository);
 
-  Future<UserEntity?> call(String email, String password) {
+  Future<dynamic> call(String email, String password) {
     return repository.login(email, password);
   }
 }

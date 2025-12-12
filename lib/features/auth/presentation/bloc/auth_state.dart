@@ -1,8 +1,6 @@
-import 'package:equatable/equatable.dart';
-
 enum AuthStatus { initial, loading, success, failure }
 
-class AuthState extends Equatable {
+class AuthState {
   final AuthStatus status;
   final String? message;
 
@@ -14,7 +12,4 @@ class AuthState extends Equatable {
       message: message ?? this.message,
     );
   }
-
-  @override
-  List<Object?> get props => [status, message];
 }
