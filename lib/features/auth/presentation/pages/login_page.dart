@@ -7,6 +7,7 @@ import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import '../../../../core/di/injector.dart';
 import '../../../auth/domain/usecases/login_usecase.dart';
+import '../../../dashboard/presentation/pages/dashboard_page.dart';
 import 'forgot_password_page.dart';
 
 class LoginPage extends StatelessWidget {
@@ -200,7 +201,14 @@ class LoginPage extends StatelessWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (_) => const DashboardPage(),
+                  ),
+                );
+              },
               child: const Text(
                 "OK",
                 style: TextStyle(color: Colors.green),

@@ -39,6 +39,18 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
         'name': name,
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
+        'macros': {
+          'caloriesGoal': 2000,
+          'caloriesConsumed': 0,
+          'carbsGoal': 200,
+          'carbsConsumed': 0,
+          'proteinGoal': 120,
+          'proteinConsumed': 0,
+          'fatGoal': 70,
+          'fatConsumed': 0,
+          'waterGoal': 2000,
+          'waterConsumed': 0,
+        },
       });
     }
   }
