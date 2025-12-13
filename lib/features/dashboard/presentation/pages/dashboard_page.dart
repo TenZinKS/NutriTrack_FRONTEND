@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injector.dart';
+import '../../../../core/widgets/nutri_bottom_nav_bar.dart';
+import '../../../analysis/presentation/pages/analysis_page.dart';
 import '../../domain/entities/user_macros.dart';
 import '../../domain/usecases/listen_user_macros_usecase.dart';
 import '../../domain/usecases/update_user_macros_usecase.dart';
@@ -363,65 +365,17 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildBottomActions(BuildContext context, UserMacros macros) {
     final isUpdating = context.watch<MacrosBloc>().state.status == MacrosStatus.updating;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
-          borderRadius: BorderRadius.circular(40),
-          border: Border.all(color: Colors.white12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _bottomNavIcon(Icons.home_filled, isActive: true),
-            _bottomNavIcon(Icons.show_chart),
-            GestureDetector(
-              onTap: isUpdating ? null : () => _showUpdateMacrosSheet(context, macros),
-              child: _bottomNavIcon(
-                Icons.add,
-                highlight: true,
-                disabled: isUpdating,
-              ),
-            ),
-            _bottomNavIcon(Icons.restaurant_menu),
-            _bottomNavIcon(Icons.settings),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _bottomNavIcon(
-    IconData icon, {
-    bool isActive = false,
-    bool highlight = false,
-    bool disabled = false,
-  }) {
-    final color = highlight
-        ? (disabled ? Colors.white70 : Colors.black)
-        : isActive
-            ? Colors.green
-            : Colors.white70;
-    final background = highlight
-        ? (disabled ? Colors.green.withOpacity(0.4) : Colors.white)
-        : Colors.transparent;
-
-    return Container(
-      width: 52,
-      height: 52,
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(18),
-        border: highlight
-            ? null
-            : Border.all(
-                color: isActive ? Colors.green : Colors.white24,
-                width: isActive ? 2 : 1,
-              ),
-      ),
-      child: Icon(icon, color: color),
+    return NutriBottomNavBar(
+      selectedIndex: 0,
+      isAddDisabled: isUpdating,
+      onAddTap: () => _showUpdateMacrosSheet(context, macros),
+      onItemSelected: (index) {
+        if (index == 1) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const AnalysisPage()),
+          );
+        }
+      },
     );
   }
 

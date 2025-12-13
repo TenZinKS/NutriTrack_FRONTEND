@@ -1,6 +1,10 @@
-import 'package:get_it/get_it.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:get_it/get_it.dart';
+import 'package:nutri_track/features/analysis/data/datasources/analysis_remote_datasource.dart';
+import 'package:nutri_track/features/analysis/data/repositories/analysis_repository_impl.dart';
+import 'package:nutri_track/features/analysis/domain/repositories/analysis_repository.dart';
+import 'package:nutri_track/features/analysis/domain/usecases/get_analysis_range_usecase.dart';
 import 'package:nutri_track/features/auth/domain/repositories/auth_repository.dart';
 import 'package:nutri_track/features/auth/domain/usecases/forgot_password_usecase.dart';
 import 'package:nutri_track/features/auth/domain/usecases/register_usecase.dart';
@@ -27,6 +31,13 @@ Future<void> initDependencies() async {
     ),
   );
 
+  sl.registerLazySingleton<AnalysisRemoteDatasource>(
+    () => AnalysisRemoteDatasourceImpl(
+      firestore: sl(),
+      firebaseAuth: sl(),
+    ),
+  );
+
   sl.registerLazySingleton<MacrosRemoteDatasource>(
     () => MacrosRemoteDatasourceImpl(
       firebaseAuth: sl(),
@@ -42,9 +53,14 @@ Future<void> initDependencies() async {
     () => MacrosRepositoryImpl(remoteDatasource: sl()),
   );
 
+  sl.registerLazySingleton<AnalysisRepository>(
+    () => AnalysisRepositoryImpl(remoteDatasource: sl()),
+  );
+
   sl.registerLazySingleton(() => LoginUsecase(sl()));
   sl.registerLazySingleton(() => RegisterUsecase(sl()));
   sl.registerLazySingleton(() => ForgotPasswordUsecase(sl()));
   sl.registerLazySingleton(() => ListenUserMacrosUsecase(sl()));
   sl.registerLazySingleton(() => UpdateUserMacrosUsecase(sl()));
+  sl.registerLazySingleton(() => GetAnalysisRangeUsecase(sl()));
 }
