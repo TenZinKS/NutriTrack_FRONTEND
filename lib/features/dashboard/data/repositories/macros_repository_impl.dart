@@ -32,4 +32,24 @@ class MacrosRepositoryImpl implements MacrosRepository {
 
     return remoteDatasource.updateMacros(model);
   }
+
+  @override
+  Future<UserMacros> fetchCurrentMacros() {
+    return remoteDatasource.fetchCurrentMacros();
+  }
+
+  @override
+  Future<void> markOnboardingCompleted() {
+    return remoteDatasource.markOnboardingCompleted();
+  }
+
+  @override
+  Future<bool> isOnboardingCompleted() {
+    return remoteDatasource.isOnboardingCompleted();
+  }
+
+  @override
+  Stream<bool> watchOnboardingStatus() {
+    return remoteDatasource.watchOnboardingStatus();
+  }
 }

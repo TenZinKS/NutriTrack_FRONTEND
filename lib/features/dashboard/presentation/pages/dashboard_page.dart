@@ -5,6 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injector.dart';
 import '../../../../core/widgets/nutri_bottom_nav_bar.dart';
 import '../../../analysis/presentation/pages/analysis_page.dart';
+import '../../../meal_planner/presentation/pages/ai_meal_planner_page.dart';
+import '../../../my_foods/presentation/pages/my_foods_page.dart';
+import '../../../settings/presentation/pages/settings_page.dart';
 import '../../domain/entities/user_macros.dart';
 import '../../domain/usecases/listen_user_macros_usecase.dart';
 import '../../domain/usecases/update_user_macros_usecase.dart';
@@ -112,13 +115,13 @@ class _DashboardPageState extends State<DashboardPage> {
                               macros.caloriesConsumed,
                             ),
                             const SizedBox(height: 28),
-                            _buildMacroGrid(macros),
+                            _buildMacroGrid(context, macros),
                             const SizedBox(height: 28)
                           ],
                         ),
                       ),
                     ),
-                    _buildBottomActions(context, macros),
+                    _buildBottomActions(context),
                   ],
                 ),
               );
@@ -149,6 +152,8 @@ class _DashboardPageState extends State<DashboardPage> {
     double progress,
     int consumed,
   ) {
+    final hasExceeded = consumed > caloriesGoal;
+    final displayLeft = hasExceeded ? consumed - caloriesGoal : caloriesLeft;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
@@ -172,7 +177,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       painter: _SemiCirclePainter(
                         progress: value,
                         backgroundColor: const Color(0xFF2A2A2A),
-                        foregroundColor: Colors.white,
+                        foregroundColor: hasExceeded ? Colors.redAccent : Colors.white,
                       ),
                     );
                   },
@@ -182,42 +187,18 @@ class _DashboardPageState extends State<DashboardPage> {
                   child: Column(
                     children: [
                       Text(
-                        '$caloriesLeft',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        '$displayLeft',
+                        style: TextStyle(
+                          color: hasExceeded ? Colors.redAccent : Colors.white,
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      const Text(
-                        'Left',
-                        style: TextStyle(color: Colors.white54),
+                      Text(
+                        hasExceeded ? 'Over' : 'Left',
+                        style: TextStyle(color: hasExceeded ? Colors.redAccent : Colors.white54),
                       ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 20,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text('0', style: TextStyle(color: Colors.white38, fontSize: 11)),
-                      SizedBox(height: 2),
-                      Text('Consumed', style: TextStyle(color: Colors.white38, fontSize: 11)),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  right: 20,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('$caloriesGoal', style: const TextStyle(color: Colors.white38, fontSize: 11)),
-                      const SizedBox(height: 2),
-                      const Text('Goal', style: TextStyle(color: Colors.white38, fontSize: 11)),
                     ],
                   ),
                 ),
@@ -233,23 +214,33 @@ class _DashboardPageState extends State<DashboardPage> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          Text(
-            '$consumed consumed of $caloriesGoal kcal',
-            style: const TextStyle(color: Colors.white60),
-          ),
+          if (hasExceeded)
+            const Text(
+              'Calorie goal exceeded',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            )
+          else
+            Text(
+              '$consumed consumed of $caloriesGoal kcal',
+              style: const TextStyle(color: Colors.white60),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildMacroGrid(UserMacros macros) {
+  Widget _buildMacroGrid(BuildContext blocContext, UserMacros macros) {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisSpacing: 18,
       mainAxisSpacing: 18,
-      childAspectRatio: 1.05,
+      childAspectRatio: 0.85,
       children: [
         _buildMacroCard(
           title: 'Carbs',
@@ -279,6 +270,8 @@ class _DashboardPageState extends State<DashboardPage> {
           color: const Color(0xFF00B1FF),
           icon: Icons.local_drink,
           unit: 'ml',
+          onTap: () => _showWaterEntryDialog(blocContext, macros),
+          showMenuIcon: true,
         ),
       ],
     );
@@ -291,16 +284,23 @@ class _DashboardPageState extends State<DashboardPage> {
     required Color color,
     required IconData icon,
     String unit = 'g',
+    VoidCallback? onTap,
+    bool showMenuIcon = false,
   }) {
     final progress = goal == 0 ? 0.0 : (consumed / goal).clamp(0, 1).toDouble();
-    return Container(
+    final hasExceeded = consumed > goal;
+    final backgroundColor = hasExceeded ? Colors.redAccent : color;
+    final textColor = hasExceeded ? Colors.white : Colors.black;
+    final detailTextColor = hasExceeded ? Colors.white70 : Colors.black54;
+    final warningTextColor = hasExceeded ? Colors.white : Colors.black87;
+    final card = Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: color,
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.4),
+            color: backgroundColor.withOpacity(0.4),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -321,23 +321,23 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 child: Icon(icon, color: Colors.black87),
               ),
-              const Icon(Icons.more_horiz, color: Colors.black45),
+              if (showMenuIcon) const Icon(Icons.more_horiz, color: Colors.black45),
             ],
           ),
           const SizedBox(height: 16),
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.black,
+            style: TextStyle(
+              color: textColor,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 12),
           LinearProgressIndicator(
             value: progress,
             backgroundColor: Colors.black12,
-            color: Colors.black87,
+            color: hasExceeded ? Colors.white : Colors.black87,
             minHeight: 6,
           ),
           const SizedBox(height: 10),
@@ -346,33 +346,59 @@ class _DashboardPageState extends State<DashboardPage> {
             children: [
               Text(
                 '$consumed$unit',
-                style: const TextStyle(
-                  color: Colors.black87,
+                style: TextStyle(
+                  color: warningTextColor,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 '$goal$unit',
-                style: const TextStyle(color: Colors.black54),
+                style: TextStyle(color: detailTextColor),
               ),
             ],
           ),
+          if (hasExceeded) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Exceeded',
+              style: TextStyle(
+                color: warningTextColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
       ),
     );
+
+    if (onTap == null) return card;
+    return GestureDetector(
+      onTap: onTap,
+      child: card,
+    );
   }
 
-  Widget _buildBottomActions(BuildContext context, UserMacros macros) {
-    final isUpdating = context.watch<MacrosBloc>().state.status == MacrosStatus.updating;
+  Widget _buildBottomActions(BuildContext context) {
     return NutriBottomNavBar(
       selectedIndex: 0,
-      isAddDisabled: isUpdating,
-      onAddTap: () => _showUpdateMacrosSheet(context, macros),
+      onAddTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AiMealPlannerPage()),
+        );
+      },
       onItemSelected: (index) {
         if (index == 1) {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const AnalysisPage()),
+          );
+        } else if (index == 3) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MyFoodsPage()),
+          );
+        } else if (index == 4) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const SettingsPage()),
           );
         }
       },
@@ -503,6 +529,100 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
+
+  Future<void> _showWaterEntryDialog(BuildContext context, UserMacros macros) async {
+    final bloc = context.read<MacrosBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+    final controller = TextEditingController();
+    final WaterAction? action = await showDialog<WaterAction>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF101010),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Log Water',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+          ),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Amount (ml)',
+              labelStyle: const TextStyle(color: Colors.white70),
+              filled: true,
+              fillColor: const Color(0xFF1A1A1A),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Colors.white24),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: Colors.green),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final parsed = int.tryParse(controller.text);
+                if (parsed == null || parsed <= 0) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Enter a valid amount')),
+                  );
+                  return;
+                }
+                Navigator.of(dialogContext).pop(WaterAction.remove(parsed));
+              },
+              child: const Text('Remove'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final parsed = int.tryParse(controller.text);
+                if (parsed == null || parsed <= 0) {
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Enter a valid amount')),
+                  );
+                  return;
+                }
+                Navigator.of(dialogContext).pop(WaterAction.add(parsed));
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (action == null || action.amount <= 0) return;
+
+    final delta = action.type == WaterActionType.add ? action.amount : -action.amount;
+    final updated = macros.copyWith(
+      waterConsumed: (macros.waterConsumed + delta).clamp(0, 100000),
+    );
+    if (!mounted) return;
+    bloc.add(SubmitMacrosUpdateEvent(updated));
+  }
+}
+
+enum WaterActionType { add, remove }
+
+class WaterAction {
+  final WaterActionType type;
+  final int amount;
+
+  const WaterAction(this.type, this.amount);
+
+  factory WaterAction.add(int amount) => WaterAction(WaterActionType.add, amount);
+  factory WaterAction.remove(int amount) => WaterAction(WaterActionType.remove, amount);
 }
 
 class _SemiCirclePainter extends CustomPainter {

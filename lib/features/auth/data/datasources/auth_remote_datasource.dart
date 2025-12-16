@@ -5,6 +5,9 @@ abstract class AuthRemoteDatasource {
   Future login(String email, String password);
   Future<void> register(String name, String email, String password);
   Future<void> sendPasswordResetEmail(String email);
+  Future<User?> currentUser();
+  Future<void> logout();
+  Future<void> deleteAccount();
 }
 
 class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
@@ -39,6 +42,7 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
         'name': name,
         'email': email,
         'createdAt': FieldValue.serverTimestamp(),
+        'onboardingCompleted': false,
         'macros': {
           'caloriesGoal': 2000,
           'caloriesConsumed': 0,
@@ -58,5 +62,24 @@ class AuthRemoteDatasourceImpl implements AuthRemoteDatasource {
   @override
   Future<void> sendPasswordResetEmail(String email) async {
     await firebaseAuth.sendPasswordResetEmail(email: email);
+  }
+
+  @override
+  Future<User?> currentUser() async {
+    return firebaseAuth.currentUser;
+  }
+
+  @override
+  Future<void> logout() async {
+    await firebaseAuth.signOut();
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    final user = firebaseAuth.currentUser;
+    if (user == null) {
+      throw Exception('User not authenticated');
+    }
+    await user.delete();
   }
 }

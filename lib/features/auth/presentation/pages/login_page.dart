@@ -10,11 +10,23 @@ import '../../../auth/domain/usecases/login_usecase.dart';
 import '../../../dashboard/presentation/pages/dashboard_page.dart';
 import 'forgot_password_page.dart';
 
-class LoginPage extends StatelessWidget {
+class LoginPage extends StatefulWidget {
   LoginPage({super.key});
 
+  @override
+  State<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage> {
   final emailCtrl = TextEditingController();
   final passCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    emailCtrl.dispose();
+    passCtrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +198,7 @@ class LoginPage extends StatelessWidget {
   }
 
   Future<void> _showLoginDialog(BuildContext context) async {
-    await showDialog<void>(
+    final shouldNavigate = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -202,12 +214,7 @@ class LoginPage extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(dialogContext).pop();
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (_) => const DashboardPage(),
-                  ),
-                );
+                Navigator.of(dialogContext).pop(true);
               },
               child: const Text(
                 "OK",
@@ -218,6 +225,14 @@ class LoginPage extends StatelessWidget {
         );
       },
     );
+
+    if (shouldNavigate == true && mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => const DashboardPage(),
+        ),
+      );
+    }
   }
 
   Widget _buildTextField(TextEditingController ctrl, String hint,

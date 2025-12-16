@@ -7,6 +7,9 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../../core/di/injector.dart';
 import '../../../../core/widgets/nutri_bottom_nav_bar.dart';
 import '../../../dashboard/presentation/pages/dashboard_page.dart';
+import '../../../meal_planner/presentation/pages/ai_meal_planner_page.dart';
+import '../../../my_foods/presentation/pages/my_foods_page.dart';
+import '../../../settings/presentation/pages/settings_page.dart';
 import '../../domain/entities/analysis_range.dart';
 import '../bloc/analysis_cubit.dart';
 import '../bloc/analysis_state.dart';
@@ -29,6 +32,7 @@ class _AnalysisView extends StatelessWidget {
 
   static const _rangeLabels = ['Daily', 'Weekly', 'Monthly'];
   static const _rangeKeys = ['daily', 'weekly', 'monthly'];
+  static const _dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   @override
   Widget build(BuildContext context) {
@@ -47,11 +51,19 @@ class _AnalysisView extends StatelessWidget {
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(builder: (_) => const DashboardPage()),
                       );
+                    } else if (index == 3) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const MyFoodsPage()),
+                      );
+                    } else if (index == 4) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const SettingsPage()),
+                      );
                     }
                   },
                   onAddTap: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (_) => const DashboardPage()),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AiMealPlannerPage()),
                     );
                   },
                 ),
@@ -197,6 +209,14 @@ class _AnalysisView extends StatelessWidget {
       fontWeight: FontWeight.w600,
       fontSize: 18,
     );
+    final actual = data.underGoalTrend;
+    final goal = data.overGoalTrend;
+    final labels = data.labels.isEmpty ? _rangeLabels : data.labels;
+    final avg = actual.isEmpty ? 0 : actual.reduce((a, b) => a + b) / actual.length;
+    final bestDayIndex = _minIndex(actual);
+    final worstDayIndex = _maxIndex(actual);
+    final bestValue = actual.isEmpty ? 0 : actual[bestDayIndex];
+    final worstValue = actual.isEmpty ? 0 : actual[worstDayIndex];
 
     return Container(
       width: double.infinity,
@@ -218,35 +238,53 @@ class _AnalysisView extends StatelessWidget {
             ),
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
             child: LineChart(
-              _buildLineChartData(data),
+              _buildLineChartData(actual, goal, labels),
               duration: const Duration(milliseconds: 350),
             ),
           ),
           const SizedBox(height: 12),
           Wrap(
-            spacing: 16,
+            spacing: 12,
             runSpacing: 8,
             children: [
               _LegendDot(
                 color: const Color(0xFFFF6C2F),
-                label: '${_countActive(data.underGoalTrend)} days under goal',
+                label: 'Actual intake',
               ),
               _LegendDot(
                 color: Colors.black87,
-                label:
-                    '${_countActive(data.overGoalTrend)} days over by more than 200 kcal',
+                label: 'Ideal target',
+              ),
+              _summaryChip('Avg', '${avg.toStringAsFixed(0)} kcal'),
+              _summaryChip(
+                'Best day',
+                '${_labelAt(labels, bestDayIndex)} (${bestValue.toStringAsFixed(0)} kcal)',
+              ),
+              _summaryChip(
+                'High day',
+                '${_labelAt(labels, worstDayIndex)} (${worstValue.toStringAsFixed(0)} kcal)',
               ),
             ],
           ),
+          const SizedBox(height: 12),
+          _buildDailyBreakdown(actual, goal, labels),
         ],
       ),
     );
   }
 
-  LineChartData _buildLineChartData(AnalysisRange data) {
-    final spotsPrimary = _mapToSpots(data.underGoalTrend);
-    final spotsSecondary = _mapToSpots(data.overGoalTrend);
-    final maxY = _maxY(data);
+  LineChartData _buildLineChartData(
+    List<double> actual,
+    List<double> goal,
+    List<String> labels,
+  ) {
+    final spotsPrimary = _mapToSpots(actual);
+    final spotsSecondary = _mapToSpots(goal);
+    final maxY = _maxY(actual, goal);
+    final maxX = (spotsPrimary.length - 1).clamp(1, 30).toDouble();
+
+    final labelCount = labels.length;
+    final step = labelCount <= 6 ? 1 : (labelCount / 6).ceil();
 
     return LineChartData(
       gridData: FlGridData(
@@ -262,31 +300,60 @@ class _AnalysisView extends StatelessWidget {
       titlesData: FlTitlesData(
         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        leftTitles: const AxisTitles(
-          sideTitles: SideTitles(showTitles: false),
-        ),
-        bottomTitles: AxisTitles(
+        leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            interval: 1,
+            interval: (maxY / 4).clamp(100, 500),
+            reservedSize: 50,
             getTitlesWidget: (value, meta) {
-              final index = value.toInt();
-              const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-              final label = (index >= 0 && index < days.length) ? days[index] : '';
+              if (value == meta.min || value == meta.max) {
+                return const SizedBox.shrink();
+              }
               return Padding(
-                padding: const EdgeInsets.only(top: 6),
+                padding: const EdgeInsets.only(right: 4),
                 child: Text(
-                  label,
+                  value.toStringAsFixed(0),
                   style: const TextStyle(
-                    color: Colors.black87,
+                    color: Colors.black54,
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
               );
             },
           ),
         ),
+      bottomTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          interval: 1,
+          reservedSize: 44,
+          getTitlesWidget: (value, meta) {
+            final index = value.toInt();
+            final isEdge = index == 0 || index == labelCount - 1;
+            if (!isEdge && (index % step) != 0) {
+              return const SizedBox.shrink();
+            }
+            final label = _labelAt(labels, index);
+            final shift = index == 0
+                ? const Offset(12, 0)
+                : (index == labelCount - 1 ? const Offset(-12, 0) : Offset.zero);
+            return Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Transform.translate(
+                offset: shift,
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
       ),
       borderData: FlBorderData(
         show: true,
@@ -298,7 +365,7 @@ class _AnalysisView extends StatelessWidget {
         ),
       ),
       minX: 0,
-      maxX: 6,
+      maxX: maxX,
       minY: 0,
       maxY: maxY,
       lineTouchData: LineTouchData(
@@ -356,15 +423,104 @@ class _AnalysisView extends StatelessWidget {
     );
   }
 
-  double _maxY(AnalysisRange data) {
-    final combined = [...data.underGoalTrend, ...data.overGoalTrend];
+  double _maxY(List<double> actual, List<double> goal) {
+    final combined = [...actual, ...goal];
     if (combined.isEmpty) return 400;
     final maxVal = combined.reduce(math.max);
     return (maxVal <= 0 ? 400 : maxVal + 80).toDouble();
   }
 
-  static int _countActive(List<double> values) {
-    return values.where((value) => value > 0).length;
+  Widget _buildDailyBreakdown(
+    List<double> actual,
+    List<double> goal,
+    List<String> labels,
+  ) {
+    if (actual.isEmpty || goal.isEmpty) {
+      return const Text(
+        'Not enough data yet to show daily breakdown.',
+        style: TextStyle(color: Colors.black54),
+      );
+    }
+
+    return Column(
+      children: List.generate(
+        math.min(actual.length, _dayLabels.length),
+        (index) {
+          final intake = actual[index];
+          final target = goal.length > index ? goal[index] : goal.last;
+          final difference = intake - target;
+          final status = difference <= 0 ? 'under' : 'over';
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 64,
+                  child: Text(
+                    _labelAt(labels, index),
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: LinearProgressIndicator(
+                    value: target == 0 ? 0 : (intake / target).clamp(0, 1.5),
+                    backgroundColor: Colors.white24,
+                    color: difference <= 0 ? const Color(0xFF1DD06C) : const Color(0xFFFF6C2F),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${intake.toStringAsFixed(0)} kcal',
+                  style: const TextStyle(color: Colors.black87),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  status,
+                  style: TextStyle(
+                    color: difference <= 0 ? const Color(0xFF1DD06C) : const Color(0xFFFF6C2F),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _summaryChip(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.black54,
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMacroDistribution(AnalysisRange data) {
@@ -424,6 +580,41 @@ class _AnalysisView extends StatelessWidget {
       ),
     );
   }
+}
+
+int _minIndex(List<double> values) {
+  if (values.isEmpty) return 0;
+  var min = values.first;
+  var index = 0;
+  for (var i = 1; i < values.length; i++) {
+    if (values[i] < min) {
+      min = values[i];
+      index = i;
+    }
+  }
+  return index;
+}
+
+int _maxIndex(List<double> values) {
+  if (values.isEmpty) return 0;
+  var max = values.first;
+  var index = 0;
+  for (var i = 1; i < values.length; i++) {
+    if (values[i] > max) {
+      max = values[i];
+      index = i;
+    }
+  }
+  return index;
+}
+
+String _labelAt(List<String> labels, int index) {
+  final defaults = _AnalysisView._dayLabels;
+  if (labels.isEmpty) {
+    return defaults[index % defaults.length];
+  }
+  if (index < 0) return labels.first;
+  return labels[index % labels.length];
 }
 
 class _LegendDot extends StatelessWidget {
