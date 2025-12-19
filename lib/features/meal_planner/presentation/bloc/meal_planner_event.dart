@@ -8,6 +8,13 @@ class GenerateMealPlanEvent extends MealPlannerEvent {
   GenerateMealPlanEvent(this.request);
 }
 
+class RegenerateMealPlanEvent extends MealPlannerEvent {}
+
+class SelectMealOptionEvent extends MealPlannerEvent {
+  final int index;
+  SelectMealOptionEvent(this.index);
+}
+
 class SaveMealEvent extends MealPlannerEvent {
   final MealPlan meal;
   SaveMealEvent(this.meal);

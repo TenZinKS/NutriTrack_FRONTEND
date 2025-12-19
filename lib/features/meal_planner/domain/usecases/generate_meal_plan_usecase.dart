@@ -7,7 +7,7 @@ class GenerateMealPlanUsecase {
 
   GenerateMealPlanUsecase(this.repository);
 
-  Future<MealPlan> call(MealPlanRequest request) {
-    return repository.generateMeal(request);
+  Future<List<MealPlan>> call(MealPlanRequest request) {
+    return repository.generateMeals(request);
   }
 }

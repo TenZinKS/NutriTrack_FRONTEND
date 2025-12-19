@@ -10,14 +10,15 @@ class MealPlannerRepositoryImpl implements MealPlannerRepository {
   final MealPlannerRemoteDatasource remoteDatasource;
 
   @override
-  Future<MealPlan> generateMeal(MealPlanRequest request) {
-    return remoteDatasource.generateMeal(request);
+  Future<List<MealPlan>> generateMeals(MealPlanRequest request) {
+    return remoteDatasource.generateMeals(request);
   }
 
   @override
   Future<void> saveMeal(MealPlan meal) {
     return remoteDatasource.saveMeal(
       MealPlanModel(
+        title: meal.title,
         mealType: meal.mealType,
         requirements: meal.requirements,
         calories: meal.calories,

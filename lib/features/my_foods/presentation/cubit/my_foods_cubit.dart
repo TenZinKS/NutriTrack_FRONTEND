@@ -7,6 +7,7 @@ import '../../domain/entities/custom_food.dart';
 import '../../domain/usecases/delete_custom_food_usecase.dart';
 import '../../domain/usecases/listen_custom_foods_usecase.dart';
 import '../../domain/usecases/toggle_favorite_food_usecase.dart';
+import '../../domain/usecases/update_custom_food_usecase.dart';
 
 enum MyFoodsStatus { initial, loading, success, failure }
 enum MyFoodsFilter { all, favorites }
@@ -53,12 +54,14 @@ class MyFoodsCubit extends Cubit<MyFoodsState> {
   final ListenCustomFoodsUsecase listenCustomFoodsUsecase;
   final ToggleFavoriteFoodUsecase toggleFavoriteFoodUsecase;
   final DeleteCustomFoodUsecase deleteCustomFoodUsecase;
+  final UpdateCustomFoodUsecase updateCustomFoodUsecase;
   StreamSubscription<List<CustomFood>>? _subscription;
 
   MyFoodsCubit({
     required this.listenCustomFoodsUsecase,
     required this.toggleFavoriteFoodUsecase,
     required this.deleteCustomFoodUsecase,
+    required this.updateCustomFoodUsecase,
   }) : super(const MyFoodsState());
 
   void loadFoods() {
@@ -95,6 +98,10 @@ class MyFoodsCubit extends Cubit<MyFoodsState> {
 
   Future<void> deleteFood(String id) async {
     await deleteCustomFoodUsecase(id);
+  }
+
+  Future<void> updateFood(CustomFood food) async {
+    await updateCustomFoodUsecase(food);
   }
 
   @override

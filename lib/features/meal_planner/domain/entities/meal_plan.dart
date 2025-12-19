@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 class MealPlan extends Equatable {
+  final String title;
   final String mealType;
   final String requirements;
   final int calories;
@@ -10,6 +11,7 @@ class MealPlan extends Equatable {
   final String suggestion;
 
   const MealPlan({
+    required this.title,
     required this.mealType,
     required this.requirements,
     required this.calories,
@@ -20,6 +22,7 @@ class MealPlan extends Equatable {
   });
 
   static const empty = MealPlan(
+    title: '',
     mealType: 'Breakfast',
     requirements: '',
     calories: 0,
@@ -30,6 +33,7 @@ class MealPlan extends Equatable {
   );
 
   MealPlan copyWith({
+    String? title,
     String? mealType,
     String? requirements,
     int? calories,
@@ -39,6 +43,7 @@ class MealPlan extends Equatable {
     String? suggestion,
   }) {
     return MealPlan(
+      title: title ?? this.title,
       mealType: mealType ?? this.mealType,
       requirements: requirements ?? this.requirements,
       calories: calories ?? this.calories,
@@ -51,6 +56,7 @@ class MealPlan extends Equatable {
 
   @override
   List<Object?> get props => [
+        title,
         mealType,
         requirements,
         calories,

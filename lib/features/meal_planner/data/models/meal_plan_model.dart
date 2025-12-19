@@ -2,6 +2,7 @@ import '../../domain/entities/meal_plan.dart';
 
 class MealPlanModel extends MealPlan {
   const MealPlanModel({
+    required super.title,
     required super.mealType,
     required super.requirements,
     required super.calories,
@@ -13,6 +14,7 @@ class MealPlanModel extends MealPlan {
 
   factory MealPlanModel.fromMap(Map<String, dynamic> map) {
     return MealPlanModel(
+      title: map['title'] as String? ?? (map['name'] as String? ?? 'Meal'),
       mealType: map['mealType'] as String? ?? 'Meal',
       requirements: map['requirements'] as String? ?? '',
       calories: ((map['calories'] ?? 0) as num).toInt(),
@@ -25,6 +27,7 @@ class MealPlanModel extends MealPlan {
 
   Map<String, dynamic> toMap() {
     return {
+      'title': title,
       'mealType': mealType,
       'requirements': requirements,
       'calories': calories,
@@ -36,6 +39,7 @@ class MealPlanModel extends MealPlan {
   }
 
   MealPlanModel copyWith({
+    String? title,
     String? mealType,
     String? requirements,
     int? calories,
@@ -45,6 +49,7 @@ class MealPlanModel extends MealPlan {
     String? suggestion,
   }) {
     return MealPlanModel(
+      title: title ?? this.title,
       mealType: mealType ?? this.mealType,
       requirements: requirements ?? this.requirements,
       calories: calories ?? this.calories,

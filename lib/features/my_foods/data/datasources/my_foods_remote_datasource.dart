@@ -5,6 +5,7 @@ import '../models/custom_food_model.dart';
 
 abstract class MyFoodsRemoteDatasource {
   Future<void> saveCustomFood(Map<String, dynamic> data);
+  Future<void> updateCustomFood(String id, Map<String, dynamic> data);
   Stream<List<CustomFoodModel>> listenCustomFoods();
   Future<void> toggleFavorite(String id, bool isFavorite);
   Future<void> deleteCustomFood(String id);
@@ -35,6 +36,26 @@ class MyFoodsRemoteDatasourceImpl implements MyFoodsRemoteDatasource {
       'createdAt': FieldValue.serverTimestamp(),
       'isFavorite': false,
     });
+  }
+
+  @override
+  Future<void> updateCustomFood(String id, Map<String, dynamic> data) async {
+    final uid = firebaseAuth.currentUser?.uid;
+    if (uid == null) {
+      throw Exception('User not authenticated');
+    }
+    await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('customFoods')
+        .doc(id)
+        .set(
+          {
+            ...data,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
   }
 
   @override

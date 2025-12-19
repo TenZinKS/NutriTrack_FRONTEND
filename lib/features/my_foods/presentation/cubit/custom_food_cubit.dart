@@ -77,6 +77,7 @@ class CustomFoodCubit extends Cubit<CustomFoodState> {
     ));
     try {
       await addFoodToDietUsecase(
+        name: food.name,
         calories: food.calories,
         protein: food.protein,
         carbs: food.carbs,

@@ -9,6 +9,7 @@ import '../../../meal_planner/presentation/pages/ai_meal_planner_page.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../domain/entities/custom_food.dart';
 import '../cubit/my_foods_cubit.dart';
+import 'food_detail_page.dart';
 
 class MyFoodsPage extends StatelessWidget {
   const MyFoodsPage({super.key});
@@ -20,6 +21,7 @@ class MyFoodsPage extends StatelessWidget {
         listenCustomFoodsUsecase: sl(),
         toggleFavoriteFoodUsecase: sl(),
         deleteCustomFoodUsecase: sl(),
+        updateCustomFoodUsecase: sl(),
       )..loadFoods(),
       child: const _MyFoodsView(),
     );
@@ -235,20 +237,12 @@ class _MyFoodsView extends StatelessWidget {
   }
 
   Widget _foodTile(BuildContext context, CustomFood food) {
-    return Dismissible(
-      key: ValueKey(food.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.redAccent.withOpacity(0.8),
-          borderRadius: BorderRadius.circular(18),
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => FoodDetailPage(food: food),
         ),
-        child: const Icon(Icons.delete, color: Colors.white),
       ),
-      onDismissed: (_) => context.read<MyFoodsCubit>().deleteFood(food.id),
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
         color: const Color(0xFF141414),
@@ -281,18 +275,12 @@ class _MyFoodsView extends StatelessWidget {
                   ],
                 ),
               ),
-              IconButton(
-                icon: Icon(
-                  food.isFavorite ? Icons.favorite : Icons.favorite_border,
-                  color: food.isFavorite ? const Color(0xFFFF6C2F) : Colors.white54,
-                ),
-                onPressed: () =>
-                    context.read<MyFoodsCubit>().toggleFavorite(food),
-              ),
+              const Icon(Icons.chevron_right, color: Colors.white38),
             ],
           ),
         ),
       ),
     );
   }
+
 }

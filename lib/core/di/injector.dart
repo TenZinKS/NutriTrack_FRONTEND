@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get_it/get_it.dart';
+import 'package:http/http.dart' as http;
 import 'package:nutri_track/features/analysis/data/datasources/analysis_remote_datasource.dart';
 import 'package:nutri_track/features/analysis/data/repositories/analysis_repository_impl.dart';
 import 'package:nutri_track/features/analysis/domain/repositories/analysis_repository.dart';
@@ -23,6 +24,13 @@ import 'package:nutri_track/features/my_foods/domain/usecases/delete_custom_food
 import 'package:nutri_track/features/my_foods/domain/usecases/listen_custom_foods_usecase.dart';
 import 'package:nutri_track/features/my_foods/domain/usecases/save_custom_food_usecase.dart';
 import 'package:nutri_track/features/my_foods/domain/usecases/toggle_favorite_food_usecase.dart';
+import 'package:nutri_track/features/my_foods/domain/usecases/update_custom_food_usecase.dart';
+import 'package:nutri_track/features/food_entries/data/datasources/food_entries_remote_datasource.dart';
+import 'package:nutri_track/features/food_entries/data/repositories/food_entries_repository_impl.dart';
+import 'package:nutri_track/features/food_entries/domain/repositories/food_entries_repository.dart';
+import 'package:nutri_track/features/food_entries/domain/usecases/delete_food_entry_usecase.dart';
+import 'package:nutri_track/features/food_entries/domain/usecases/listen_today_entries_usecase.dart';
+import 'package:nutri_track/features/food_entries/domain/usecases/update_food_entry_usecase.dart';
 
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
@@ -43,6 +51,7 @@ final sl = GetIt.instance;
 Future<void> initDependencies() async {
   sl.registerLazySingleton(() => FirebaseAuth.instance);
   sl.registerLazySingleton(() => FirebaseFirestore.instance);
+  sl.registerLazySingleton<http.Client>(() => http.Client());
 
   sl.registerLazySingleton<AuthRemoteDatasource>(
     () => AuthRemoteDatasourceImpl(
@@ -62,10 +71,17 @@ Future<void> initDependencies() async {
     () => MealPlannerRemoteDatasourceImpl(
       firestore: sl(),
       firebaseAuth: sl(),
+      httpClient: sl(),
     ),
   );
   sl.registerLazySingleton<MyFoodsRemoteDatasource>(
     () => MyFoodsRemoteDatasourceImpl(
+      firestore: sl(),
+      firebaseAuth: sl(),
+    ),
+  );
+  sl.registerLazySingleton<FoodEntriesRemoteDatasource>(
+    () => FoodEntriesRemoteDatasourceImpl(
       firestore: sl(),
       firebaseAuth: sl(),
     ),
@@ -96,6 +112,9 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<MyFoodsRepository>(
     () => MyFoodsRepositoryImpl(remoteDatasource: sl()),
   );
+  sl.registerLazySingleton<FoodEntriesRepository>(
+    () => FoodEntriesRepositoryImpl(remote: sl()),
+  );
 
   sl.registerLazySingleton(() => LoginUsecase(sl()));
   sl.registerLazySingleton(() => RegisterUsecase(sl()));
@@ -108,7 +127,7 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetCurrentUserMacrosUsecase(sl()));
   sl.registerLazySingleton(() => CompleteOnboardingUsecase(sl()));
   sl.registerLazySingleton(() => WatchOnboardingStatusUsecase(sl()));
-  sl.registerLazySingleton(() => AddFoodToDietUsecase(sl(), sl()));
+  sl.registerLazySingleton(() => AddFoodToDietUsecase(sl(), sl(), sl()));
   sl.registerLazySingleton(() => GetAnalysisRangeUsecase(sl()));
   sl.registerLazySingleton(() => GenerateMealPlanUsecase(sl()));
   sl.registerLazySingleton(() => SaveMealUsecase(sl()));
@@ -116,5 +135,21 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => ListenCustomFoodsUsecase(sl()));
   sl.registerLazySingleton(() => ToggleFavoriteFoodUsecase(sl()));
   sl.registerLazySingleton(() => DeleteCustomFoodUsecase(sl()));
+  sl.registerLazySingleton(() => UpdateCustomFoodUsecase(sl()));
+  sl.registerLazySingleton(() => ListenTodayEntriesUsecase(sl()));
+  sl.registerLazySingleton(
+    () => UpdateFoodEntryUsecase(
+      repository: sl(),
+      macrosRepository: sl(),
+      analysisRepository: sl(),
+    ),
+  );
+  sl.registerLazySingleton(
+    () => DeleteFoodEntryUsecase(
+      repository: sl(),
+      macrosRepository: sl(),
+      analysisRepository: sl(),
+    ),
+  );
   sl.registerLazySingleton(() => CalculateNutritionTargetsUsecase());
 }

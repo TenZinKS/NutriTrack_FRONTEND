@@ -281,7 +281,9 @@ class _AnalysisView extends StatelessWidget {
     final spotsPrimary = _mapToSpots(actual);
     final spotsSecondary = _mapToSpots(goal);
     final maxY = _maxY(actual, goal);
-    final maxX = (spotsPrimary.length - 1).clamp(1, 30).toDouble();
+    final totalPoints =
+        math.max(spotsPrimary.length, spotsSecondary.length);
+    final maxX = (totalPoints - 1).clamp(1, 30).toDouble();
 
     final labelCount = labels.length;
     final step = labelCount <= 6 ? 1 : (labelCount / 6).ceil();

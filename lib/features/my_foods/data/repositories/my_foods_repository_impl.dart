@@ -20,6 +20,17 @@ class MyFoodsRepositoryImpl implements MyFoodsRepository {
   }
 
   @override
+  Future<void> updateCustomFood(CustomFood food) {
+    return remoteDatasource.updateCustomFood(food.id, {
+      'name': food.name,
+      'calories': food.calories,
+      'protein': food.protein,
+      'carbs': food.carbs,
+      'fat': food.fat,
+    });
+  }
+
+  @override
   Stream<List<CustomFood>> listenCustomFoods() {
     return remoteDatasource.listenCustomFoods();
   }

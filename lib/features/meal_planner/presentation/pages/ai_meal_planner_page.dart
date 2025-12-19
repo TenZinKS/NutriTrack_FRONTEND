@@ -58,7 +58,8 @@ class _AiMealPlannerPageState extends State<AiMealPlannerPage> {
         builder: (context, state) {
           final isLoading = state.status == MealPlannerStatus.loading;
           final isSaving = state.status == MealPlannerStatus.saving;
-          final hasMeal = state.meal != MealPlan.empty && state.meal.suggestion.isNotEmpty;
+          final hasMeals = state.hasMeals;
+          final selectedMeal = state.selectedMeal;
 
           return Scaffold(
             backgroundColor: Colors.black,
@@ -68,92 +69,123 @@ class _AiMealPlannerPageState extends State<AiMealPlannerPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildHeader(context),
-                    const SizedBox(height: 32),
-                    _buildMealTypeSelector(),
-                    const SizedBox(height: 24),
-                    _buildLabel('Enter your requirements'),
-                    _buildInput(_requirementCtrl, hint: 'e.g. high protein wrap'),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel('Enter Calories'),
-                              _buildInput(_caloriesCtrl, keyboard: TextInputType.number),
-                            ],
-                          ),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeader(context),
+                            const SizedBox(height: 32),
+                            _buildMealTypeSelector(),
+                            const SizedBox(height: 24),
+                            _buildLabel('Enter your requirements'),
+                            _buildInput(_requirementCtrl, hint: 'e.g. high protein wrap'),
+                            const SizedBox(height: 24),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildLabel('Enter Calories'),
+                                      _buildInput(_caloriesCtrl, keyboard: TextInputType.number),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildLabel('Enter Protein'),
+                                      _buildInput(_proteinCtrl, keyboard: TextInputType.number),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildLabel('Enter Carbs'),
+                                      _buildInput(_carbsCtrl, keyboard: TextInputType.number),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      _buildLabel('Enter Fat'),
+                                      _buildInput(_fatCtrl, keyboard: TextInputType.number),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            _buildSuggestionsSection(context, state, isLoading),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel('Enter Protein'),
-                              _buildInput(_proteinCtrl, keyboard: TextInputType.number),
-                            ],
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel('Enter Carbs'),
-                              _buildInput(_carbsCtrl, keyboard: TextInputType.number),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildLabel('Enter Fat'),
-                              _buildInput(_fatCtrl, keyboard: TextInputType.number),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    if (isLoading)
-                      const Center(child: CircularProgressIndicator())
-                    else if (hasMeal)
-                      _buildMealCard(state.meal),
-                    const Spacer(),
+                    const SizedBox(height: 12),
                     _buildPrimaryButton(
-                      label: isLoading ? 'Creating...' : 'Create Meal',
+                      label: isLoading && !hasMeals ? 'Creating...' : 'Create Meals',
                       activeColor: const Color(0xFF1DD06C),
                       onPressed: isLoading
                           ? null
                           : () {
+                              final requirements = _requirementCtrl.text.trim();
+                              if (requirements.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please describe what you want to eat or any dietary needs.',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
                               final request = MealPlanRequest(
                                 mealType: _mealTypes[_selectedMealIndex],
-                                requirements: _requirementCtrl.text.trim(),
+                                requirements: requirements,
                                 calories: _parseInt(_caloriesCtrl.text),
                                 protein: _parseInt(_proteinCtrl.text),
                                 carbs: _parseInt(_carbsCtrl.text),
                                 fat: _parseInt(_fatCtrl.text),
                               );
-                              context.read<MealPlannerBloc>().add(GenerateMealPlanEvent(request));
+                              context.read<MealPlannerBloc>().add(
+                                    GenerateMealPlanEvent(request),
+                                  );
                             },
                     ),
+                    if (hasMeals) ...[
+                      const SizedBox(height: 12),
+                      _buildSecondaryButton(
+                        label: 'Regenerate List',
+                        onPressed: isLoading
+                            ? null
+                            : () => context
+                                .read<MealPlannerBloc>()
+                                .add(RegenerateMealPlanEvent()),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     _buildPrimaryButton(
-                      label: isSaving ? 'Saving...' : 'Add to My Foods',
+                      label: isSaving ? 'Saving...' : 'Add Selected to My Foods',
                       activeColor: const Color(0xFF00C9C9),
                       activeTextColor: Colors.white,
-                      onPressed: (!hasMeal || isSaving)
+                      onPressed: (selectedMeal == null || isSaving)
                           ? null
                           : () {
-                              context.read<MealPlannerBloc>().add(SaveMealEvent(state.meal));
+                              context.read<MealPlannerBloc>().add(SaveMealEvent(selectedMeal));
                             },
                     ),
                     const SizedBox(height: 12),
@@ -313,43 +345,167 @@ class _AiMealPlannerPageState extends State<AiMealPlannerPage> {
     );
   }
 
-  Widget _buildMealCard(MealPlan meal) {
-    return Container(
+  Widget _buildSecondaryButton({
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: const Color(0xFF121212),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white12),
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(
+            color: onPressed == null ? Colors.white24 : const Color(0xFF1DD06C),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: onPressed == null ? Colors.white54 : Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
-      child: Column(
+    );
+  }
+
+  Widget _buildSuggestionsSection(
+    BuildContext context,
+    MealPlannerState state,
+    bool isLoading,
+  ) {
+    if (state.hasMeals) {
+      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '${meal.mealType} suggestion',
-            style: const TextStyle(
+          const Text(
+            'Meal suggestions',
+            style: TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            meal.suggestion,
-            style: const TextStyle(color: Colors.white70, fontSize: 15),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              _chip('Calories', meal.calories),
-              _chip('Protein', meal.protein, suffix: 'g'),
-              _chip('Carbs', meal.carbs, suffix: 'g'),
-              _chip('Fat', meal.fat, suffix: 'g'),
-            ],
-          ),
+          const SizedBox(height: 12),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: LinearProgressIndicator(
+                minHeight: 4,
+                color: Color(0xFF1DD06C),
+                backgroundColor: Colors.white12,
+              ),
+            ),
+          ...List.generate(state.meals.length, (index) {
+            final meal = state.meals[index];
+            final isSelected = index == state.selectedIndex;
+            return _mealOptionCard(context, meal, isSelected, index);
+          }),
         ],
+      );
+    }
+
+    if (isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return _buildIdlePlaceholder();
+  }
+
+  Widget _buildIdlePlaceholder() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: const Text(
+        'Tell us what you are craving plus your macros, then tap "Create Meals" to see AI suggestions.',
+        style: TextStyle(color: Colors.white60, fontSize: 14),
+      ),
+    );
+  }
+
+  Widget _mealOptionCard(
+    BuildContext context,
+    MealPlan meal,
+    bool isSelected,
+    int index,
+  ) {
+    return GestureDetector(
+      onTap: () =>
+          context.read<MealPlannerBloc>().add(SelectMealOptionEvent(index)),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF121212),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF1DD06C) : Colors.white12,
+            width: 2,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        meal.title.isEmpty ? meal.mealType : meal.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        meal.mealType,
+                        style: const TextStyle(color: Colors.white54, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                  color: isSelected ? const Color(0xFF1DD06C) : Colors.white38,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (meal.suggestion.isNotEmpty)
+              Text(
+                meal.suggestion,
+                style: const TextStyle(color: Colors.white70, fontSize: 15),
+              ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                _chip('Calories', meal.calories),
+                _chip('Protein', meal.protein, suffix: 'g'),
+                _chip('Carbs', meal.carbs, suffix: 'g'),
+                _chip('Fat', meal.fat, suffix: 'g'),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

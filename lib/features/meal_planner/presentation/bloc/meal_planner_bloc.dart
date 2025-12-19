@@ -12,6 +12,8 @@ class MealPlannerBloc extends Bloc<MealPlannerEvent, MealPlannerState> {
     required this.saveMealUsecase,
   }) : super(const MealPlannerState()) {
     on<GenerateMealPlanEvent>(_onGenerateMeal);
+    on<RegenerateMealPlanEvent>(_onRegenerateMeal);
+    on<SelectMealOptionEvent>(_onSelectMeal);
     on<SaveMealEvent>(_onSaveMeal);
   }
 
@@ -24,11 +26,14 @@ class MealPlannerBloc extends Bloc<MealPlannerEvent, MealPlannerState> {
   ) async {
     emit(state.copyWith(status: MealPlannerStatus.loading, message: null));
     try {
-      final meal = await generateMealPlanUsecase(event.request);
+      final meals = await generateMealPlanUsecase(event.request);
       emit(
         state.copyWith(
           status: MealPlannerStatus.success,
-          meal: meal,
+          meals: meals,
+          selectedIndex: 0,
+          lastRequest: event.request,
+          message: null,
         ),
       );
     } catch (e) {
@@ -39,6 +44,53 @@ class MealPlannerBloc extends Bloc<MealPlannerEvent, MealPlannerState> {
         ),
       );
     }
+  }
+
+  Future<void> _onRegenerateMeal(
+    RegenerateMealPlanEvent event,
+    Emitter<MealPlannerState> emit,
+  ) async {
+    final request = state.lastRequest;
+    if (request == null) {
+      emit(
+        state.copyWith(
+          status: MealPlannerStatus.failure,
+          message: 'Create a meal plan first to regenerate suggestions.',
+        ),
+      );
+      return;
+    }
+
+    emit(state.copyWith(status: MealPlannerStatus.loading, message: null));
+    try {
+      final meals = await generateMealPlanUsecase(request);
+      emit(
+        state.copyWith(
+          status: MealPlannerStatus.success,
+          meals: meals,
+          selectedIndex: 0,
+          lastRequest: request,
+          message: null,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          status: MealPlannerStatus.failure,
+          message: e.toString(),
+        ),
+      );
+    }
+  }
+
+  void _onSelectMeal(
+    SelectMealOptionEvent event,
+    Emitter<MealPlannerState> emit,
+  ) {
+    if (event.index < 0 || event.index >= state.meals.length) {
+      return;
+    }
+    emit(state.copyWith(selectedIndex: event.index));
   }
 
   Future<void> _onSaveMeal(
