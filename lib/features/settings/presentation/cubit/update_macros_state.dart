@@ -1,6 +1,7 @@
 part of 'update_macros_cubit.dart';
 
 enum UpdateMacrosStatus { initial, loading, ready, submitting, success, failure }
+enum UpdateMacroSuggestionStatus { idle, calculating, ready, failure }
 
 class UpdateMacrosState {
   final UpdateMacrosStatus status;
@@ -11,6 +12,8 @@ class UpdateMacrosState {
   final int fatGoal;
   final int waterGoal;
   final String? message;
+  final NutritionTargets? suggestion;
+  final UpdateMacroSuggestionStatus suggestionStatus;
 
   const UpdateMacrosState({
     this.status = UpdateMacrosStatus.initial,
@@ -21,6 +24,8 @@ class UpdateMacrosState {
     this.fatGoal = 0,
     this.waterGoal = 0,
     this.message,
+    this.suggestion,
+    this.suggestionStatus = UpdateMacroSuggestionStatus.idle,
   });
 
   UpdateMacrosState copyWith({
@@ -32,6 +37,8 @@ class UpdateMacrosState {
     int? fatGoal,
     int? waterGoal,
     String? message,
+    NutritionTargets? suggestion,
+    UpdateMacroSuggestionStatus? suggestionStatus,
   }) {
     return UpdateMacrosState(
       status: status ?? this.status,
@@ -42,6 +49,8 @@ class UpdateMacrosState {
       fatGoal: fatGoal ?? this.fatGoal,
       waterGoal: waterGoal ?? this.waterGoal,
       message: message,
+      suggestion: suggestion ?? this.suggestion,
+      suggestionStatus: suggestionStatus ?? this.suggestionStatus,
     );
   }
 }

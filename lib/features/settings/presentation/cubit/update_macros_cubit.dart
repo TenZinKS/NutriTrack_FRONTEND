@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../dashboard/domain/entities/user_macros.dart';
 import '../../../dashboard/domain/usecases/get_current_user_macros_usecase.dart';
 import '../../../dashboard/domain/usecases/update_user_macros_usecase.dart';
+import '../../../onboarding/domain/entities/nutrition_targets.dart';
+import '../../../onboarding/domain/usecases/calculate_nutrition_targets_usecase.dart';
 
 part 'update_macros_state.dart';
 
@@ -10,10 +12,12 @@ class UpdateMacrosCubit extends Cubit<UpdateMacrosState> {
   UpdateMacrosCubit({
     required this.getCurrentUserMacrosUsecase,
     required this.updateUserMacrosUsecase,
+    required this.calculateNutritionTargetsUsecase,
   }) : super(const UpdateMacrosState());
 
   final GetCurrentUserMacrosUsecase getCurrentUserMacrosUsecase;
   final UpdateUserMacrosUsecase updateUserMacrosUsecase;
+  final CalculateNutritionTargetsUsecase calculateNutritionTargetsUsecase;
 
   Future<void> loadMacros() async {
     emit(state.copyWith(status: UpdateMacrosStatus.loading, message: null));
@@ -60,6 +64,10 @@ class UpdateMacrosCubit extends Cubit<UpdateMacrosState> {
     emit(state.copyWith(waterGoal: _parseGoal(value, state.waterGoal)));
   }
 
+  void updateSuggestionStatus(UpdateMacroSuggestionStatus status) {
+    emit(state.copyWith(suggestionStatus: status));
+  }
+
   Future<void> save() async {
     emit(state.copyWith(status: UpdateMacrosStatus.submitting, message: null));
     try {
@@ -87,5 +95,28 @@ class UpdateMacrosCubit extends Cubit<UpdateMacrosState> {
     final parsed = int.tryParse(value);
     if (parsed == null || parsed < 0) return fallback;
     return parsed;
+  }
+
+  void generateSuggestion({
+    required NutritionGender gender,
+    required double heightCm,
+    required double currentWeight,
+    required double targetWeight,
+    required NutritionActivityLevel activityLevel,
+  }) {
+    emit(state.copyWith(suggestionStatus: UpdateMacroSuggestionStatus.calculating, message: null));
+    final targets = calculateNutritionTargetsUsecase(
+      gender: gender,
+      heightCm: heightCm,
+      currentWeightKg: currentWeight,
+      targetWeightKg: targetWeight,
+      activityLevel: activityLevel,
+    );
+    emit(
+      state.copyWith(
+        suggestion: targets,
+        suggestionStatus: UpdateMacroSuggestionStatus.ready,
+      ),
+    );
   }
 }

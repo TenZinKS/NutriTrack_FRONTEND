@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injector.dart';
 import '../../../dashboard/domain/usecases/get_current_user_macros_usecase.dart';
 import '../../../dashboard/domain/usecases/update_user_macros_usecase.dart';
+import '../../../onboarding/domain/entities/nutrition_targets.dart';
+import '../../../onboarding/domain/usecases/calculate_nutrition_targets_usecase.dart';
 import '../cubit/update_macros_cubit.dart';
 
 class UpdateMacrosPage extends StatefulWidget {
@@ -19,6 +21,12 @@ class _UpdateMacrosPageState extends State<UpdateMacrosPage> {
   final _proteinCtrl = TextEditingController();
   final _fatCtrl = TextEditingController();
   final _waterCtrl = TextEditingController();
+  final _heightCtrl = TextEditingController();
+  final _currentWeightCtrl = TextEditingController();
+  final _targetWeightCtrl = TextEditingController();
+  NutritionGender _gender = NutritionGender.male;
+  NutritionActivityLevel _activityLevel = NutritionActivityLevel.moderatelyActive;
+
   bool _synced = false;
 
   @override
@@ -28,6 +36,9 @@ class _UpdateMacrosPageState extends State<UpdateMacrosPage> {
     _proteinCtrl.dispose();
     _fatCtrl.dispose();
     _waterCtrl.dispose();
+    _heightCtrl.dispose();
+    _currentWeightCtrl.dispose();
+    _targetWeightCtrl.dispose();
     super.dispose();
   }
 
@@ -37,6 +48,7 @@ class _UpdateMacrosPageState extends State<UpdateMacrosPage> {
       create: (_) => UpdateMacrosCubit(
         getCurrentUserMacrosUsecase: sl<GetCurrentUserMacrosUsecase>(),
         updateUserMacrosUsecase: sl<UpdateUserMacrosUsecase>(),
+        calculateNutritionTargetsUsecase: sl<CalculateNutritionTargetsUsecase>(),
       )..loadMacros(),
       child: BlocListener<UpdateMacrosCubit, UpdateMacrosState>(
         listener: (context, state) {
@@ -97,6 +109,8 @@ class _UpdateMacrosPageState extends State<UpdateMacrosPage> {
                         'Enter the macro goals you would like to follow. These will immediately update your dashboard and planning tools.',
                         style: TextStyle(color: Colors.white70, fontSize: 15),
                       ),
+                      const SizedBox(height: 28),
+                      _buildSuggestionCard(context, state),
                       const SizedBox(height: 28),
                       _goalField(
                         label: 'Calories Goal',
@@ -213,6 +227,314 @@ class _UpdateMacrosPageState extends State<UpdateMacrosPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildSuggestionCard(BuildContext context, UpdateMacrosState state) {
+    final isCalculating =
+        state.suggestionStatus == UpdateMacroSuggestionStatus.calculating;
+    final suggestion = state.suggestion;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Need suggestions?',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Enter your stats and we will recommend balanced macros similar to onboarding.',
+            style: TextStyle(color: Colors.white60, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          _genderSelector(),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _infoField(
+                  label: 'Height',
+                  controller: _heightCtrl,
+                  suffix: 'cm',
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _infoField(
+                  label: 'Current Weight',
+                  controller: _currentWeightCtrl,
+                  suffix: 'kg',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _infoField(
+            label: 'Target Weight',
+            controller: _targetWeightCtrl,
+            suffix: 'kg',
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Activity level',
+            style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          _activitySelector(),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: isCalculating ? null : () => _onSuggest(context),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF1DD06C)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: isCalculating
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text(
+                      'Suggest Macros',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                    ),
+            ),
+          ),
+          if (suggestion != null && state.suggestionStatus == UpdateMacroSuggestionStatus.ready)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Recommended targets',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      _suggestionChip('Calories', '${suggestion.calories} kcal'),
+                      _suggestionChip('Protein', '${suggestion.proteinGrams} g'),
+                      _suggestionChip('Carbs', '${suggestion.carbsGrams} g'),
+                      _suggestionChip('Fat', '${suggestion.fatGrams} g'),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => _applySuggestion(context, suggestion),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1DD06C),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text(
+                        'Apply Recommendation',
+                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _suggestionChip(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1C),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _genderSelector() {
+    return Row(
+      children: [
+        _genderChip('Male', NutritionGender.male),
+        const SizedBox(width: 12),
+        _genderChip('Female', NutritionGender.female),
+      ],
+    );
+  }
+
+  Widget _genderChip(String label, NutritionGender gender) {
+    final isSelected = _gender == gender;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _gender = gender),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF1DD06C) : const Color(0xFF1A1A1A),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: isSelected ? const Color(0xFF1DD06C) : Colors.white24),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: isSelected ? Colors.black : Colors.white70,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _activitySelector() {
+    const options = [
+      NutritionActivityLevel.sedentary,
+      NutritionActivityLevel.lightlyActive,
+      NutritionActivityLevel.moderatelyActive,
+      NutritionActivityLevel.veryActive,
+    ];
+    String labelForLevel(NutritionActivityLevel level) {
+      switch (level) {
+        case NutritionActivityLevel.sedentary:
+          return 'Sedentary';
+        case NutritionActivityLevel.lightlyActive:
+          return 'Lightly Active';
+        case NutritionActivityLevel.moderatelyActive:
+          return 'Moderately Active';
+        case NutritionActivityLevel.veryActive:
+          return 'Very Active';
+      }
+    }
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 10,
+      children: options
+          .map(
+            (level) => ChoiceChip(
+              label: Text(
+                labelForLevel(level),
+                style: TextStyle(
+                  color: _activityLevel == level ? Colors.black : Colors.white70,
+                ),
+              ),
+              selected: _activityLevel == level,
+              onSelected: (_) => setState(() => _activityLevel = level),
+              selectedColor: const Color(0xFF1DD06C),
+              backgroundColor: const Color(0xFF1A1A1A),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _infoField({
+    required String label,
+    required TextEditingController controller,
+    required String suffix,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFF101010),
+            hintText: '0',
+            hintStyle: const TextStyle(color: Colors.white24),
+            suffixText: suffix,
+            suffixStyle: const TextStyle(color: Colors.white54),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+            enabledBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: Colors.white24),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: const BorderSide(color: Colors.green),
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _onSuggest(BuildContext context) {
+    final height = double.tryParse(_heightCtrl.text.trim());
+    final currentWeight = double.tryParse(_currentWeightCtrl.text.trim());
+    final targetWeight = double.tryParse(_targetWeightCtrl.text.trim());
+
+    if (height == null || currentWeight == null || targetWeight == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter valid height and weight values.')),
+      );
+      return;
+    }
+
+    context.read<UpdateMacrosCubit>().generateSuggestion(
+          gender: _gender,
+          heightCm: height,
+          currentWeight: currentWeight,
+          targetWeight: targetWeight,
+          activityLevel: _activityLevel,
+        );
+  }
+
+  void _applySuggestion(BuildContext context, NutritionTargets suggestion) {
+    _setIfChanged(_caloriesCtrl, suggestion.calories);
+    _setIfChanged(_proteinCtrl, suggestion.proteinGrams);
+    _setIfChanged(_carbsCtrl, suggestion.carbsGrams);
+    _setIfChanged(_fatCtrl, suggestion.fatGrams);
+    final cubit = context.read<UpdateMacrosCubit>();
+    cubit.updateCalories(suggestion.calories.toString());
+    cubit.updateProtein(suggestion.proteinGrams.toString());
+    cubit.updateCarbs(suggestion.carbsGrams.toString());
+    cubit.updateFat(suggestion.fatGrams.toString());
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Saving recommended macros...')),
+    );
+    cubit.save();
   }
 
   Widget _goalField({

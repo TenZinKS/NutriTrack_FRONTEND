@@ -14,6 +14,7 @@ import '../../../food_entries/domain/entities/food_entry.dart';
 import '../cubit/settings_cubit.dart';
 import '../cubit/today_entries_cubit.dart';
 import 'update_macros_page.dart';
+import 'profile_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -101,8 +102,10 @@ class _SettingsView extends StatelessWidget {
                         _SettingsTile(
                           label: 'Profile',
                           onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Profile coming soon')),
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ProfilePage(user: user),
+                              ),
                             );
                           },
                         ),

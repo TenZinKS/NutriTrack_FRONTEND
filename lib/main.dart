@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/di/injector.dart';
-import 'features/auth/presentation/widgets/auth_gate.dart';
+import 'core/notifications/notification_service.dart';
 import 'features/splash/presentation/pages/splash_page.dart';
 
 void main() async {
@@ -13,6 +13,7 @@ void main() async {
   );
 
   await initDependencies();
+  await sl<NotificationService>().initialize();
 
   runApp(const NutriTrackApp());
 }

@@ -44,6 +44,8 @@ import '../../features/dashboard/domain/usecases/get_current_user_macros_usecase
 import '../../features/dashboard/domain/usecases/listen_user_macros_usecase.dart';
 import '../../features/dashboard/domain/usecases/update_user_macros_usecase.dart';
 import '../../features/dashboard/domain/usecases/watch_onboarding_status_usecase.dart';
+import '../../features/dashboard/domain/usecases/generate_reminders_usecase.dart';
+import '../notifications/notification_service.dart';
 import '../../features/onboarding/domain/usecases/calculate_nutrition_targets_usecase.dart';
 
 final sl = GetIt.instance;
@@ -127,6 +129,8 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton(() => GetCurrentUserMacrosUsecase(sl()));
   sl.registerLazySingleton(() => CompleteOnboardingUsecase(sl()));
   sl.registerLazySingleton(() => WatchOnboardingStatusUsecase(sl()));
+  sl.registerLazySingleton(() => GenerateRemindersUsecase());
+  sl.registerLazySingleton(() => NotificationService());
   sl.registerLazySingleton(() => AddFoodToDietUsecase(sl(), sl(), sl()));
   sl.registerLazySingleton(() => GetAnalysisRangeUsecase(sl()));
   sl.registerLazySingleton(() => GenerateMealPlanUsecase(sl()));

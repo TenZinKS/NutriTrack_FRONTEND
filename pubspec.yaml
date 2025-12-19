@@ -42,6 +42,8 @@ dependencies:
   cloud_firestore: ^6.1.0
   fl_chart: ^0.68.0
   http: ^1.2.2
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.3
 
 dev_dependencies:
   flutter_test:

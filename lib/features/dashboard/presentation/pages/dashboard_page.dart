@@ -9,8 +9,11 @@ import '../../../meal_planner/presentation/pages/ai_meal_planner_page.dart';
 import '../../../my_foods/presentation/pages/my_foods_page.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../domain/entities/user_macros.dart';
+import '../../domain/entities/reminder.dart';
 import '../../domain/usecases/listen_user_macros_usecase.dart';
 import '../../domain/usecases/update_user_macros_usecase.dart';
+import '../../domain/usecases/generate_reminders_usecase.dart';
+import '../../../../core/notifications/notification_service.dart';
 import '../bloc/macros_bloc.dart';
 import '../bloc/macros_event.dart';
 import '../bloc/macros_state.dart';
@@ -23,6 +26,16 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  late final GenerateRemindersUsecase _generateRemindersUsecase;
+  late final NotificationService _notificationService;
+
+  @override
+  void initState() {
+    super.initState();
+    _generateRemindersUsecase = sl();
+    _notificationService = sl();
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
@@ -67,6 +80,10 @@ class _DashboardPageState extends State<DashboardPage> {
                   : (macros.caloriesConsumed / macros.caloriesGoal)
                       .clamp(0, 1)
                       .toDouble();
+              final reminders = _generateRemindersUsecase(macros);
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _notificationService.syncReminders(reminders),
+              );
 
               return Container(
                 decoration: const BoxDecoration(
@@ -85,28 +102,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 8),
-                            Center(
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'Hi ${macros.name.isEmpty ? 'there' : macros.name}!',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "Today is ${_formatWeekday()}",
-                                    style: const TextStyle(
-                                      color: Colors.white60,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            _buildGreetingHeader(context, macros, reminders),
                             const SizedBox(height: 20),
                             _buildCaloriesGauge(
                               caloriesLeft,
@@ -116,7 +112,9 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                             const SizedBox(height: 28),
                             _buildMacroGrid(context, macros),
-                            const SizedBox(height: 28)
+                            const SizedBox(height: 28),
+                            if (reminders.isNotEmpty) _buildRemindersCard(context, reminders),
+                            if (reminders.isNotEmpty) const SizedBox(height: 28),
                           ],
                         ),
                       ),
@@ -230,6 +228,76 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildGreetingHeader(
+    BuildContext context,
+    UserMacros macros,
+    List<Reminder> reminders,
+  ) {
+    final hasCritical = reminders.any((reminder) => reminder.isCritical);
+    final firstName = (macros.name.isEmpty ? 'there' : macros.name).split(' ').first;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                'Hi $firstName!',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Today is ${_formatWeekday()}",
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 16,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        GestureDetector(
+          onTap: () => _showRemindersSheet(context, reminders),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1C1C),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: const Icon(Icons.notifications_none, color: Colors.white),
+              ),
+              if (hasCritical)
+                Positioned(
+                  right: 2,
+                  top: 2,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: const BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -613,6 +681,59 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+class _ReminderTile extends StatelessWidget {
+  const _ReminderTile({required this.reminder});
+
+  final Reminder reminder;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: reminder.isCritical ? Colors.redAccent.withOpacity(0.12) : const Color(0xFF1C1C1C),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: reminder.isCritical ? Colors.redAccent.withOpacity(0.4) : Colors.white10,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            reminder.isCritical ? Icons.warning_amber_rounded : Icons.alarm,
+            color: reminder.isCritical ? Colors.redAccent : Colors.white70,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  reminder.title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  reminder.message,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            reminder.timeLabel,
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 enum WaterActionType { add, remove }
 
 class WaterAction {
@@ -667,3 +788,82 @@ class _SemiCirclePainter extends CustomPainter {
         oldDelegate.foregroundColor != foregroundColor;
   }
 }
+  Widget _buildRemindersCard(BuildContext context, List<Reminder> reminders) {
+    final preview = reminders.take(3).toList();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                'Reminders',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: () => _showRemindersSheet(context, reminders),
+                child: const Text('See all'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...preview.map((reminder) => _ReminderTile(reminder: reminder)),
+        ],
+      ),
+    );
+  }
+
+  void _showRemindersSheet(BuildContext context, List<Reminder> reminders) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F0F0F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    'Notifications',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white54),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...reminders.map((reminder) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ReminderTile(reminder: reminder),
+                  )),
+            ],
+          ),
+        );
+      },
+    );
+  }
