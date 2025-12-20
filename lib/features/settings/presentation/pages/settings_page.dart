@@ -106,7 +106,7 @@ class _SettingsView extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (_) => ProfilePage(user: user),
                               ),
-                            );
+                            ).then((_) => context.read<SettingsCubit>().loadUser());
                           },
                         ),
                         _SettingsTile(

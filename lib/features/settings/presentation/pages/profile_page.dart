@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../auth/domain/entities/auth_user.dart';
+import '../../../../core/di/injector.dart';
+import '../../domain/entities/user_profile.dart';
+import '../cubit/profile_cubit.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.user});
@@ -14,120 +18,157 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _emailCtrl;
-  late final TextEditingController _dobCtrl;
+  late final TextEditingController _heightCtrl;
+  late final TextEditingController _weightCtrl;
   String _selectedGender = 'Male';
-  String _selectedHeight = '5.0 ft';
-  String _selectedWeight = '60 kg';
+  bool _seededProfile = false;
 
   static const _genders = ['Male', 'Female', 'Other'];
-  static const _heights = [
-    '4.6 ft',
-    '4.8 ft',
-    '5.0 ft',
-    '5.2 ft',
-    '5.4 ft',
-    '5.6 ft',
-    '5.8 ft',
-    '6.0 ft',
-    '6.2 ft',
-  ];
-  static const _weights = [
-    '45 kg',
-    '50 kg',
-    '55 kg',
-    '60 kg',
-    '65 kg',
-    '70 kg',
-    '75 kg',
-    '80 kg',
-  ];
+  static const _defaultHeightCm = 170;
+  static const _defaultWeightKg = 60;
 
   @override
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.user.name);
     _emailCtrl = TextEditingController(text: widget.user.email);
-    _dobCtrl = TextEditingController();
+    _heightCtrl = TextEditingController(text: _defaultHeightCm.toString());
+    _weightCtrl = TextEditingController(text: _defaultWeightKg.toString());
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
-    _dobCtrl.dispose();
+    _heightCtrl.dispose();
+    _weightCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(context),
-              const SizedBox(height: 24),
-              _buildAvatar(),
-              const SizedBox(height: 24),
-              _ProfileField(
-                label: 'Name',
-                controller: _nameCtrl,
-              ),
-              const SizedBox(height: 16),
-              _ProfileField(
-                label: 'Email',
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              _ProfileField(
-                label: 'DOB',
-                controller: _dobCtrl,
-                readOnly: true,
-                onTap: _pickDate,
-                suffixIcon: const Icon(Icons.calendar_today, color: Colors.white54, size: 18),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(child: _buildDropdown('Gender', _genders, _selectedGender,
-                      (value) => setState(() => _selectedGender = value))),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildDropdown('Height', _heights, _selectedHeight,
-                      (value) => setState(() => _selectedHeight = value))),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(child: _buildDropdown('Weight', _weights, _selectedWeight,
-                      (value) => setState(() => _selectedWeight = value))),
-                  const SizedBox(width: 12),
-                  const Expanded(child: SizedBox()),
-                ],
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _onSave,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1DD06C),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                  ),
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
+    return BlocProvider(
+      create: (_) => ProfileCubit(
+        getUserProfileUsecase: sl(),
+        updateUserProfileUsecase: sl(),
+      )..loadProfile(),
+      child: BlocConsumer<ProfileCubit, ProfileState>(
+        listener: (context, state) {
+          if (state.message != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(state.message!)),
+            );
+          }
+          if (state.status == ProfileStatus.ready && !_seededProfile) {
+            final profile = state.profile;
+            if (profile != null) {
+              final gender = _genders.contains(profile.gender) ? profile.gender : _genders.first;
+              final heightValue = profile.heightCm > 0 ? profile.heightCm : _defaultHeightCm;
+              final weightValue = profile.weightKg > 0 ? profile.weightKg : _defaultWeightKg;
+              if (!mounted) return;
+              setState(() {
+                _nameCtrl.text = profile.name.isNotEmpty ? profile.name : widget.user.name;
+                _emailCtrl.text = profile.email.isNotEmpty ? profile.email : widget.user.email;
+                _selectedGender = gender;
+                _heightCtrl.text = heightValue.toStringAsFixed(0);
+                _weightCtrl.text = weightValue.toStringAsFixed(0);
+                _seededProfile = true;
+              });
+            } else {
+              _seededProfile = true;
+            }
+          }
+          if (state.status == ProfileStatus.success) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile saved')),
+            );
+          }
+        },
+        builder: (context, state) {
+          final isSaving = state.status == ProfileStatus.submitting;
+          return Scaffold(
+            backgroundColor: Colors.black,
+            body: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(context),
+                    const SizedBox(height: 24),
+                    _buildAvatar(),
+                    const SizedBox(height: 24),
+                    _ProfileField(
+                      label: 'Name',
+                      controller: _nameCtrl,
+                    ),
+                    const SizedBox(height: 16),
+                    _ProfileField(
+                      label: 'Email',
+                      controller: _emailCtrl,
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDropdown(
+                            'Gender',
+                            _genders,
+                            _selectedGender,
+                            (value) => setState(() => _selectedGender = value),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ProfileField(
+                            label: 'Height (cm)',
+                            controller: _heightCtrl,
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _ProfileField(
+                            label: 'Weight (kg)',
+                            controller: _weightCtrl,
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(child: SizedBox()),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: isSaving ? null : () => _onSave(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1DD06C),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        ),
+                        child: Text(
+                          isSaving ? 'Saving...' : 'Save',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -222,36 +263,23 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Future<void> _pickDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(now.year - 18),
-      firstDate: DateTime(1900),
-      lastDate: now,
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF1DD06C),
-              onPrimary: Colors.black,
-              surface: Color(0xFF111111),
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
+  void _onSave(BuildContext context) {
+    final heightCm = _parseMetricValue(_heightCtrl.text);
+    final weightKg = _parseMetricValue(_weightCtrl.text);
+
+    final profile = UserProfile(
+      name: _nameCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      gender: _selectedGender,
+      heightCm: heightCm,
+      weightKg: weightKg,
     );
-    if (picked != null) {
-      _dobCtrl.text = '${picked.day.toString().padLeft(2, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.year}';
-    }
+
+    context.read<ProfileCubit>().save(profile);
   }
 
-  void _onSave() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile saved')),
-    );
+  double _parseMetricValue(String input) {
+    return double.tryParse(input.trim()) ?? 0;
   }
 
   String _initials(String input) {

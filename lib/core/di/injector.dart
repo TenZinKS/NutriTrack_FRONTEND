@@ -31,6 +31,11 @@ import 'package:nutri_track/features/food_entries/domain/repositories/food_entri
 import 'package:nutri_track/features/food_entries/domain/usecases/delete_food_entry_usecase.dart';
 import 'package:nutri_track/features/food_entries/domain/usecases/listen_today_entries_usecase.dart';
 import 'package:nutri_track/features/food_entries/domain/usecases/update_food_entry_usecase.dart';
+import 'package:nutri_track/features/settings/data/datasources/user_profile_remote_datasource.dart';
+import 'package:nutri_track/features/settings/data/repositories/user_profile_repository_impl.dart';
+import 'package:nutri_track/features/settings/domain/repositories/user_profile_repository.dart';
+import 'package:nutri_track/features/settings/domain/usecases/get_user_profile_usecase.dart';
+import 'package:nutri_track/features/settings/domain/usecases/update_user_profile_usecase.dart';
 
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
@@ -95,6 +100,12 @@ Future<void> initDependencies() async {
       firestore: sl(),
     ),
   );
+  sl.registerLazySingleton<UserProfileRemoteDatasource>(
+    () => UserProfileRemoteDatasourceImpl(
+      firebaseAuth: sl(),
+      firestore: sl(),
+    ),
+  );
 
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(remote: sl()),
@@ -116,6 +127,9 @@ Future<void> initDependencies() async {
   );
   sl.registerLazySingleton<FoodEntriesRepository>(
     () => FoodEntriesRepositoryImpl(remote: sl()),
+  );
+  sl.registerLazySingleton<UserProfileRepository>(
+    () => UserProfileRepositoryImpl(remoteDatasource: sl()),
   );
 
   sl.registerLazySingleton(() => LoginUsecase(sl()));
@@ -156,4 +170,6 @@ Future<void> initDependencies() async {
     ),
   );
   sl.registerLazySingleton(() => CalculateNutritionTargetsUsecase());
+  sl.registerLazySingleton(() => GetUserProfileUsecase(sl()));
+  sl.registerLazySingleton(() => UpdateUserProfileUsecase(sl()));
 }
