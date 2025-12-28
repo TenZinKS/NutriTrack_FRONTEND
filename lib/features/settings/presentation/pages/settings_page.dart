@@ -13,6 +13,7 @@ import '../../../auth/presentation/pages/forgot_password_page.dart';
 import '../../../food_entries/domain/entities/food_entry.dart';
 import '../cubit/settings_cubit.dart';
 import '../cubit/today_entries_cubit.dart';
+import 'help_faq_page.dart';
 import 'update_macros_page.dart';
 import 'profile_page.dart';
 
@@ -122,6 +123,16 @@ class _SettingsView extends StatelessWidget {
                           onTap: () {
                             Navigator.of(context).push(
                               MaterialPageRoute(builder: (_) => ForgotPasswordPage()),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        _buildSectionTitle('Support'),
+                        _SettingsTile(
+                          label: 'Help & FAQ',
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const HelpFaqPage()),
                             );
                           },
                         ),
